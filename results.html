@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Results</h1>
+        <p>Uploaded Image:</p>
+        <img id="resultImage" src="" alt="Uploaded Image" style="max-width: 300px; max-height: 300px;">
+        <a id="imageLink" href="" target="_blank">View Image</a>
+        <div id="diseaseResult">
+            <p id="diseaseName">Detecting disease...</p>
+            <div id="diseaseDescription"></div>
+            <div id="diseasePrecautions"></div>
+            <div id="desclink"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function() {
+            const resultImage = document.getElementById("resultImage");
+            const imageLink = document.getElementById("imageLink");
+            const diseaseName = document.getElementById("diseaseName");
+            const linke=document.getElementById("desclink");
+            const diseaseDescription = document.getElementById("diseaseDescription");
+            const diseasePrecautions = document.getElementById("diseasePrecautions");
+
+            // Define descriptions and precautions for known diseases
+            const diseaseInfo = {
+                "Acne": {
+                    description: "Acne is a common skin condition that occurs when hair follicles become clogged with oil and dead skin cells. It can cause pimples, blackheads, and cysts.",
+                    precautions: "1. Wash your face twice a day with a mild cleanser. 2. Avoid touching your face frequently. 3. Use non-comedogenic skin products."
+                },
+                "Carcinoma": {
+                    description: "Carcinoma is a type of cancer that begins in the skin or in tissues that line or cover internal organs. It is one of the most common types of cancer.",
+                    precautions: "1. Regularly check your skin for any unusual changes. 2. Protect your skin from excessive sun exposure. 3. See a dermatologist for regular check-ups."
+                },
+                "Eczema": {
+                    description: "Eczema is a condition that makes your skin inflamed or irritated. It can cause red, itchy patches on the skin and can be triggered by allergens or irritants.",
+                    precautions: "1. Moisturize your skin regularly. 2. Avoid known irritants and allergens. 3. Use gentle, non-soap cleansers."
+                },
+                "Keratosis": {
+                    description: "Keratosis refers to the growth of keratin on the skin or mucous membranes. It can appear as rough, scaly patches on the skin.",
+                    precautions: "1. Protect your skin from sun exposure. 2. Use sunscreen regularly. 3. Regularly check your skin for changes."
+                },
+                "Milia": {
+                    description: "Milia are small, white bumps that commonly appear on the face, especially around the eyes and cheeks. They occur when keratin becomes trapped beneath the surface of the skin.",
+                    precautions: "1. Exfoliate your skin regularly. 2. Avoid heavy creams that might clog pores. 3. Consult a dermatologist for persistent cases."
+                },
+                "Rosacea": {
+                    description: "Rosacea is a chronic skin condition that causes redness and visible blood vessels in your face. It can also cause small, red, pus-filled bumps.",
+                    precautions: "1. Avoid triggers such as spicy foods and alcohol. 2. Use gentle skin care products. 3. Consult with a dermatologist for proper treatment."
+                },
+                "tick": {
+                    "description": "Tick bites are caused by small, blood-feeding parasites known as ticks. These insects attach themselves to the skin of mammals, including humans, to feed on their blood. Tick bites can sometimes transmit diseases such as Lyme disease, Rocky Mountain spotted fever, and anaplasmosis. Ticks are often found in grassy or wooded areas and can be difficult to spot due to their small size.For more information, visit the <a href=\"https://en.wikipedia.org/wiki/Tick-borne_disease\">Wikipedia page on Tick-borne disease</a>.",
+                    "precautions": "Avoid Tick Habitats: When hiking or spending time in grassy or wooded areas, wear long sleeves, long pants, and tuck your pants into your socks to reduce skin exposure. Use Tick Repellents: Apply insect repellents containing DEET (N,N-Diethyl-meta-toluamide) or other EPA-approved ingredients to exposed skin and clothing. Perform Tick Checks: After spending time outdoors, thoroughly check your body and clothing for ticks, especially in areas like the scalp, behind the ears, and between the legs. Proper Tick Removal: If you find a tick attached to your skin, remove it promptly using fine-tipped tweezers. Grasp the tick as close to the skin's surface as possible and pull upward with steady, even pressure. Clean the bite area and your hands with rubbing alcohol or soap and water. Monitor for Symptoms: Watch for signs of tick-borne diseases, such as fever, rash, or flu-like symptoms. If you develop any symptoms after a tick bite or if the tick bite site becomes red, swollen, or develops a rash, seek medical attention promptly."
+                },
+                "sunscreen, sunblock, sun blocker":{
+                    description:"Sunscreen and sunblock can both provide necessary protection against harmful UV rays. However, they can be used interchangeably.For more information, visit the <a href=\"https://www.healthline.com/health/best-face-sunscreen#A-quick-look-at-the-best-face-sunscreens\">Healthline article on Sunscreen</a>.",
+                    precautions:"1.wear broad spectrum water resistant sunscreen everyday 2.wear a wide brimmed hat,sunglasses with uv protection and lightweight long sleaves shirts and pants."
+                },
+                "chiton, coat-of-mail shell, sea cradle, polyplacophore":{
+                    description:"Chitons, commonly known as coat-of-mail shells or sea cradles, belong to the class Polyplacophora. These marine mollusks are characterized by their distinctive eight-plated shells that provide flexibility and protection. Chitons are usually found on rocky shorelines, clinging tightly to surfaces with their muscular foot. They primarily feed on algae, using their radula (a toothed, tongue-like organ) to scrape it off rocks. Chitons have a simple body structure with a ventral foot for locomotion and a dorsal shell for protection.For more details, visit the <a href=\"https://en.wikipedia.org/wiki/Chiton\">Wikipedia article on Chiton</a>.",
+                    precautions:"Handle with Care:When observing or handling chitons, do so gently to avoid harming them. They have a strong attachment to rocks and forcefully removing them can cause injury."
+                }
+
+            };
+
+            const imageUrl = localStorage.getItem("imageUrl");
+            if (imageUrl) {
+                resultImage.src = imageUrl;
+                imageLink.href = imageUrl;
+                imageLink.textContent = "View Image";
+
+                // Load the MobileNet model
+                const model = await mobilenet.load();
+                
+                // Create an image element to process
+                const img = new Image();
+                img.crossOrigin = 'anonymous'; // Ensure CORS if loading from an external URL
+                img.src = imageUrl;
+                
+                img.onload = async () => {
+                    // Classify the image
+                    const predictions = await model.classify(img);
+
+                    // Display results
+                    if (predictions.length > 0) {
+                        const detectedDisease = predictions[0].className;
+                        diseaseName.textContent = `Detected Disease: ${detectedDisease}`;
+
+                        // Provide description and precautions if available
+                        if (diseaseInfo[detectedDisease]) {
+                            diseaseDescription.innerHTML = `<strong>Description:</strong> ${diseaseInfo[detectedDisease].description}`;
+                            diseasePrecautions.innerHTML = `<strong>Precautions:</strong> ${diseaseInfo[detectedDisease].precautions}`;
+                        } else {
+                            diseaseDescription.textContent = "No description available.";
+                            diseasePrecautions.textContent = "No precautions available.";
+                        }
+                    } else {
+                        diseaseName.textContent = 'Disease not detected.';
+                        diseaseDescription.textContent = '';
+                        diseasePrecautions.textContent = '';
+                    }
+                };
+            } else {
+                resultImage.alt = "No image available";
+                imageLink.textContent = "No image available";
+                diseaseName.textContent = "No disease detected";
+                diseaseDescription.textContent = '';
+                diseasePrecautions.textContent = '';
+            }
+        });
+    </script>
+</body>
+</html>
